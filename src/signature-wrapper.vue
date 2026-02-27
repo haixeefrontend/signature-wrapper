@@ -70,8 +70,8 @@ const showSlider = ref<boolean>(false)
 const imageUrl = ref<string>('')
 
 const draw = () => {
-  const canvas: HTMLCanvasElement = canvasWrapperRef.value as HTMLCanvasElement
-  signaturePad.value = new SignaturePad(canvas as HTMLCanvasElement, {
+  if (!canvasWrapperRef.value) return
+  signaturePad.value = new SignaturePad(canvasWrapperRef.value, {
     minWidth: Number(props.penSize) - 1,
     maxWidth: Number(props.penSize) + 1,
     dotSize: Number(props.dotSize),
@@ -98,11 +98,12 @@ const draw = () => {
     const reg = RegExp(/px/)
     c.width = reg.test(props.w) ? Number(props.w.replace(/px/g, '')) * ratio : c.offsetWidth * ratio
     c.height = reg.test(props.h) ? Number(props.h.replace(/px/g, '')) * ratio : c.offsetHeight * ratio
-    c.getContext('2d')?.scale(ratio, ratio)
+    const ctx = c.getContext('2d')
+    ctx?.scale(ratio, ratio)
     clear()
   }
-  window.addEventListener('resize', () => resizeCanvas(canvas))
-  resizeCanvas(canvas)
+  window.addEventListener('resize', () => resizeCanvas(canvasWrapperRef.value!))
+  resizeCanvas(canvasWrapperRef.value)
 
   if (props.disabled) {
     signaturePad.value.off()
