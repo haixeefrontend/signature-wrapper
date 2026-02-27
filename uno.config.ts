@@ -1,5 +1,5 @@
 import { presetHaixee } from '@haixee/unocss-preset'
-import { defineConfig, presetUno, transformerDirectives, transformerVariantGroup } from 'unocss'
+import { defineConfig, presetUno, transformerDirectives, transformerVariantGroup, transformerCompileClass } from 'unocss'
 import { presetScrollbar } from 'unocss-preset-scrollbar'
 
 export default defineConfig({
@@ -13,7 +13,7 @@ export default defineConfig({
       scrollbarTrackColor: 'transparent',
     }),
   ],
-  transformers: [transformerDirectives(), transformerVariantGroup()],
+  transformers: [transformerDirectives(), transformerVariantGroup(), transformerCompileClass({ alwaysHash: true })],
   shortcuts: {
     'sb': 'scrollbar scrollbar-rounded scrollbar-thin',
     'sb-w-3': 'scrollbar scrollbar-rounded scrollbar-thumb-color-#eee scrollbar-w-4px scrollbar-h-4px',

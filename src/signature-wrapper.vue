@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ElButton, ElMessage, ElSlider } from 'element-plus'
+import { ElMessage, ElSlider } from 'element-plus'
 import SignaturePad from 'signature_pad'
-import { FunctionalComponent, h, onMounted, reactive, ref, Teleport, watch } from 'vue'
+import { h, reactive, ref, watch } from 'vue'
 
 const props = defineProps({
   w: {
@@ -58,7 +58,7 @@ const emit = defineEmits({
   endStroke: (event: MouseEvent) => true,
   beforeUpdateStroke: (event: MouseEvent) => true,
   afterUpdateStroke: (event: MouseEvent) => true,
-  save: (dataUrl: Blob, url: string) => dataUrl instanceof Blob && typeof url === 'string',
+  close: () => true,
 })
 let state = reactive<{
   uid: string
@@ -68,7 +68,6 @@ let state = reactive<{
 })
 const canvasWrapperRef = ref<HTMLCanvasElement | null>(null)
 const signaturePad = ref<SignaturePad | null>(null)
-const display = ref<boolean>(false)
 const penSize = ref<number>(Number(props.penSize))
 const showSlider = ref<boolean>(false)
 const imageUrl = ref<string>('')
@@ -134,9 +133,6 @@ const undo = () => {
     signaturePad.value?.fromData(data)
   }
 }
-const toggleFull = () => {
-  display.value = !display.value
-}
 
 const exportImage = async () => {
   if (signaturePad.value?.isEmpty()) {
@@ -166,8 +162,7 @@ const exportImage = async () => {
   }
   const blob = b64toBlob(base64str)
   imageUrl.value = URL.createObjectURL(blob)
-  emit('save', blob, imageUrl.value)
-  toggleFull()
+  return { blob, url: imageUrl.value }
 }
 
 watch(
@@ -181,23 +176,8 @@ defineExpose({
   isEmpty,
   undo,
   exportImage,
-  toggleFull,
   penSize,
 })
-
-const ConditionalTeleport: FunctionalComponent = function (_, { slots }) {
-  return props.teleport
-    ? h(
-        Teleport,
-        {
-          to: props.teleport,
-        },
-        slots.default ? slots.default() : []
-      )
-    : slots.default
-      ? slots.default()
-      : []
-}
 
 function CanvasWrapper() {
   return h('canvas', {
@@ -218,54 +198,35 @@ function CanvasWrapper() {
 </script>
 
 <template>
-  <div>
-    <slot :toggle-full="toggleFull">
-      <div class="w-full">
-        <img v-if="imageUrl" :src="imageUrl" class="max-w-full max-h-38vh" />
-        <el-button @click="toggleFull">点击签名</el-button>
-      </div>
-    </slot>
-    <conditional-teleport>
-      <div
-        class="bg-white fixed top-0 left-0 size-screen"
+  <div class=":uno: bg-white">
+    <div class=":uno: relative flex-center z-1 select-none">
+      <div class=":uno: btn-text" @click="emit('close')">关闭手写板</div>
+      <div class=":uno: btn-text" @click="() => (showSlider = !showSlider)"> 笔触大小 </div>
+      <el-slider
+        :min="1"
+        :max="15"
+        :step="0.5"
+        :model-value="penSize"
+        @update:model-value="
+          (values) => {
+            if (!signaturePad) return
+            signaturePad.minWidth = penSize = Number(values) - 1
+            signaturePad.maxWidth = penSize = Number(values) + 1
+          }
+        "
         :style="{
-          left: display ? 0 : '-300vw',
+          width: '50vw',
+          display: showSlider ? 'block' : 'none',
+          position: 'absolute',
+          top: '50px',
+          padding: '10px',
         }"
-      >
-        <div class="relative flex-center z-1 select-none">
-          <div class="btn-text" @click="toggleFull">关闭手写板</div>
-          <div class="btn-text" @click="() => (showSlider = !showSlider)"> 笔触大小 </div>
-          <el-slider
-            :min="1"
-            :max="15"
-            :step="0.5"
-            :model-value="penSize"
-            @update:model-value="
-              (values) => {
-                if (!signaturePad) return
-                signaturePad.minWidth = penSize = Number(values) - 1
-                signaturePad.maxWidth = penSize = Number(values) + 1
-              }
-            "
-            :style="{
-              width: '50vw',
-              display: showSlider ? 'block' : 'none',
-              position: 'absolute',
-              top: '50px',
-              padding: '10px',
-            }"
-          />
-          <div class="btn-text" @click="undo">回退</div>
-          <div class="btn-text" @click="clear">清除</div>
-        </div>
+      />
+      <div class=":uno: btn-text" @click="undo">回退</div>
+      <div class=":uno: btn-text" @click="clear">清除</div>
+    </div>
 
-        <canvas-wrapper />
-
-        <el-button class=":uno: absolute bottom-2 right-2 px-8 py-4 br-2" type="primary" @click="exportImage">
-          保存
-        </el-button>
-      </div>
-    </conditional-teleport>
+    <canvas-wrapper />
   </div>
 </template>
 
