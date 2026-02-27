@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ElButton, ElMessage, ElSlider } from 'element-plus'
 import SignaturePad from 'signature_pad'
-import { h, onMounted, reactive, ref } from 'vue'
+import { FunctionalComponent, h, onMounted, reactive, ref, Teleport, watch } from 'vue'
 
 const props = defineProps({
   w: {
@@ -47,6 +47,10 @@ const props = defineProps({
   velocityFilterWeight: {
     type: [String, Number],
     default: 0.7,
+  },
+  teleport: {
+    type: [String, Object],
+    default: 'body',
   },
 })
 const emit = defineEmits({
@@ -166,9 +170,10 @@ const exportImage = async () => {
   toggleFull()
 }
 
-onMounted(() => {
-  draw()
-})
+watch(
+  () => canvasWrapperRef.value,
+  () => draw(),
+)
 
 defineExpose({
   clear,
@@ -179,6 +184,20 @@ defineExpose({
   toggleFull,
   penSize,
 })
+
+const ConditionalTeleport: FunctionalComponent = function (_, { slots }) {
+  return props.teleport
+    ? h(
+        Teleport,
+        {
+          to: props.teleport,
+        },
+        slots.default ? slots.default() : []
+      )
+    : slots.default
+      ? slots.default()
+      : []
+}
 
 function CanvasWrapper() {
   return h('canvas', {
@@ -206,53 +225,47 @@ function CanvasWrapper() {
         <el-button @click="toggleFull">点击签名</el-button>
       </div>
     </slot>
-    <div
-      class="bg-white fixed top-0 left-0 size-screen"
-      :style="{
-        left: display ? 0 : '-300vw',
-        /**
-         * if a canvas was initialized with an invisible element (e.g: `display: none`);
-         * then its width and height would be stick to 0, which means that you would
-         * never see it again, unless you re-render it. So here is the workaround:
-         * to initialize the canvas at first, but put it under any element (set z-index to 0),
-         * when we need it show up, then change the z-index higher number to make it pop up.
-         */
-        zIndex: display ? 999 : -1,
-      }"
-    >
-      <div class="relative flex-center z-1 select-none">
-        <div class="btn-text" @click="toggleFull">关闭手写板</div>
-        <div class="btn-text" @click="() => (showSlider = !showSlider)"> 笔触大小 </div>
-        <el-slider
-          :min="1"
-          :max="15"
-          :step="0.5"
-          :model-value="penSize"
-          @update:model-value="
-            (values) => {
-              if (!signaturePad) return
-              signaturePad.minWidth = penSize = Number(values) - 1
-              signaturePad.maxWidth = penSize = Number(values) + 1
-            }
-          "
-          :style="{
-            width: '50vw',
-            display: showSlider ? 'block' : 'none',
-            position: 'absolute',
-            top: '50px',
-            padding: '10px',
-          }"
-        />
-        <div class="btn-text" @click="undo">回退</div>
-        <div class="btn-text" @click="clear">清除</div>
+    <conditional-teleport>
+      <div
+        class="bg-white fixed top-0 left-0 size-screen"
+        :style="{
+          left: display ? 0 : '-300vw',
+        }"
+      >
+        <div class="relative flex-center z-1 select-none">
+          <div class="btn-text" @click="toggleFull">关闭手写板</div>
+          <div class="btn-text" @click="() => (showSlider = !showSlider)"> 笔触大小 </div>
+          <el-slider
+            :min="1"
+            :max="15"
+            :step="0.5"
+            :model-value="penSize"
+            @update:model-value="
+              (values) => {
+                if (!signaturePad) return
+                signaturePad.minWidth = penSize = Number(values) - 1
+                signaturePad.maxWidth = penSize = Number(values) + 1
+              }
+            "
+            :style="{
+              width: '50vw',
+              display: showSlider ? 'block' : 'none',
+              position: 'absolute',
+              top: '50px',
+              padding: '10px',
+            }"
+          />
+          <div class="btn-text" @click="undo">回退</div>
+          <div class="btn-text" @click="clear">清除</div>
+        </div>
+
+        <canvas-wrapper />
+
+        <el-button class=":uno: absolute bottom-2 right-2 px-8 py-4 br-2" type="primary" @click="exportImage">
+          保存
+        </el-button>
       </div>
-
-      <canvas-wrapper />
-
-      <el-button class=":uno: absolute bottom-2 right-2 px-8 py-4 br-2" type="primary" @click="exportImage">
-        保存
-      </el-button>
-    </div>
+    </conditional-teleport>
   </div>
 </template>
 
